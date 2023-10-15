@@ -7,7 +7,12 @@ filepath = r'C:\Users\odonnh\PycharmProjects\ChromatographyMLProject\Source\Run 
 skipRows = 19
 prominence = 0.02
 run2 = Chromatogram(filepath=filepath, skipRows=19)
-print(run2.dataFrameIdentity().columns.values)
+
 
 if __name__ == '__main__':
-    run2.proteinPeakNumber(prominence=prominence)
+    peaks = run2.proteinPeakNumber(prominence=prominence, plot=False)
+    #print(run2.dataFrameIdentity())
+    #run2.showChromatogram()
+    print(run2.getResolution(peaks))
+
+
