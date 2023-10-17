@@ -12,7 +12,7 @@ run2 = Chromatogram(filepath=filepath, skipRows=19)
 if __name__ == '__main__':
     peaks = run2.proteinPeakNumber(prominence=prominence, plot=False)
     #print(run2.dataFrameIdentity())
-    #run2.showChromatogram()
+    run2.showChromatogram()
     print(run2.getResolution(peaks))
 
 
