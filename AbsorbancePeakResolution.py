@@ -122,7 +122,30 @@ class Chromatogram:
                 FWHMArray[i] = fwhm
             return FWHMArray
 
-        return allPeakFWHM(tPeaks=tPeaks, halfMaxArray=halfMaxArray)
+        def peakWidth(FWHMArray):
+
+            widthArray = np.ones_like(FWHMArray)
+
+            for i, FWHM in enumerate(FWHMArray):
+                width = (4 * FWHM) / (np.sqrt(8 * np.log(2)))
+                widthArray[i] = width
+            return widthArray
+
+        FWHMArray = allPeakFWHM(tPeaks=tPeaks, halfMaxArray=halfMaxArray)
+        widthArray = peakWidth(FWHMArray=FWHMArray)
+
+        tPeak1 = tPeaks[0]
+        tPeak2 = tPeaks[1]
+        tPeak3 = tPeaks[2]
+
+        width1 = widthArray[0]
+        width2 = widthArray[1]
+        width3 = widthArray[2]
+
+        resolution12 = (tPeak2 - tPeak1) / (0.5 * (width1 + width2))
+        resolution23 = (tPeak3 - tPeak2) / (0.5 * (width2 + width3))
+
+        return [resolution12, resolution23]
 
 
     def showChromatogram(self):
