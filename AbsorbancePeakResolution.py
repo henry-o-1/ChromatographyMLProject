@@ -32,7 +32,7 @@ class Chromatogram:
     def dataFrameIdentity(self):
         return self.df
 
-    def proteinPeakNumber(self, prominence=0.02, plot=False):
+    def proteinPeakDescriptors(self, prominence=0.02, plot=False):
         # Every chromatograph should have three peaks
         # If
         peakIndices = find_peaks(self.abs, prominence=prominence)[0]
@@ -85,7 +85,6 @@ class Chromatogram:
                     # If the sign changes, then the current t is the first t half max
                     if (diff < 0) and (diffLast > 0):
                         tFWHM1 = trev
-                        #print(f'Done! : {tFWHM1, halfMax}')
                         break
                     else:
                         diffLast = diff
@@ -103,7 +102,6 @@ class Chromatogram:
                     # If the sign changes, then the current t is the first t half max
                     if (diff < 0) and (diffLast > 0):
                         tFWHM2 = tfor
-                        #print(f'Done! : {tFWHM2, absfor}')
                         break
                     else:
                         diffLast = diff
@@ -122,7 +120,30 @@ class Chromatogram:
                 FWHMArray[i] = fwhm
             return FWHMArray
 
-        return allPeakFWHM(tPeaks=tPeaks, halfMaxArray=halfMaxArray)
+        def peakWidth(FWHMArray):
+
+            widthArray = np.ones_like(FWHMArray)
+
+            for i, FWHM in enumerate(FWHMArray):
+                width = (4 * FWHM) / (np.sqrt(8 * np.log(2)))
+                widthArray[i] = width
+            return widthArray
+
+        FWHMArray = allPeakFWHM(tPeaks=tPeaks, halfMaxArray=halfMaxArray)
+        widthArray = peakWidth(FWHMArray=FWHMArray)
+
+        tPeak1 = tPeaks[0]
+        tPeak2 = tPeaks[1]
+        tPeak3 = tPeaks[2]
+
+        width1 = widthArray[0]
+        width2 = widthArray[1]
+        width3 = widthArray[2]
+
+        resolution12 = (tPeak2 - tPeak1) / (0.5 * (width1 + width2))
+        resolution23 = (tPeak3 - tPeak2) / (0.5 * (width2 + width3))
+
+        return [resolution12, resolution23]
 
 
     def showChromatogram(self):
@@ -143,3 +164,42 @@ class Chromatogram:
         fig.tight_layout()
         plt.show()
 
+        # Now want to write a method to find inject spike (and maybe deadtime)
+    def timeInject(self, prominence):
+        # Plan is to start w current prominence, and decrease threshold until 4 peaks are found
+        # If for some reason > 4 peaks found, then the prominence will increase
+        # Run this method only if the original number of found peaks is 3 (could write a test for this)
+
+        peakNumber = len(self.proteinPeakDescriptors(prominence=prominence, plot=False)[0])
+
+        while peakNumber != 4:
+            prominence = prominence - 0.001
+            proteinDescriptors = self.proteinPeakDescriptors(prominence=prominence, plot=False)[0]
+            peakNumber = len(proteinDescriptors)
+
+        injectPeakTime = proteinDescriptors[0]
+
+        logger.info(f' Inject Peak Found: {injectPeakTime}')
+
+        return injectPeakTime
+
+    def nonDimensionalize(self, tInject):
+        # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
+        dfND = self.df.copy()
+        dfND = dfND[dfND['Time'] >= tInject]
+
+        dfNDTime = np.array(dfND['Time'])
+        NDTime = (dfNDTime - dfNDTime[0]) / (dfNDTime[-1] - dfNDTime[0])
+        dfND['Time'] = NDTime
+
+        return dfND
+
+    def gradientInput(self, tInject, n):
+        import math
+        dfND = self.nonDimensionalize(tInject = tInject)
+
+        m = n
+
+        slice = math.floor((len(dfND) / (m-1)))
+        gradientVector = dfND['Gradient Pump'][::slice]
+        return len(gradientVector)
