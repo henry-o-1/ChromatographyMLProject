@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
-from scipy import interpolate
+import seaborn as sns
 
 # To handle automating resolution finding
 # Note: Every time a file is run, a series of checks should be run so that the number of peaks is fixed (3)
@@ -147,6 +147,7 @@ class Chromatogram:
 
 
     def showChromatogram(self):
+        # Displays chromatogram (absorbance over time and gradient pump)
         fig, ax1 = plt.subplots()
         ln1, = ax1.plot(self.time, self.abs,
                         markersize=0.5, label='Protein absorbance')
@@ -164,27 +165,11 @@ class Chromatogram:
         fig.tight_layout()
         plt.show()
 
-        # Now want to write a method to find inject spike (and maybe deadtime)
-    def timeInject(self, prominence):
-        # Plan is to start w current prominence, and decrease threshold until 4 peaks are found
-        # If for some reason > 4 peaks found, then the prominence will increase
-        # Run this method only if the original number of found peaks is 3 (could write a test for this)
+        # Now want to write a method to find inject spike (and maybe deadtime
 
-        peakNumber = len(self.proteinPeakDescriptors(prominence=prominence, plot=False)[0])
-
-        while peakNumber != 4:
-            prominence = prominence - 0.001
-            proteinDescriptors = self.proteinPeakDescriptors(prominence=prominence, plot=False)[0]
-            peakNumber = len(proteinDescriptors)
-
-        injectPeakTime = proteinDescriptors[0]
-
-        logger.info(f' Inject Peak Found: {injectPeakTime}')
-
-        return injectPeakTime
-
-    def nonDimensionalize(self, tInject):
+    def nonDimensionalize(self, prominence):
         # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
+        tInject = self.timeInject(prominence=prominence)
         dfND = self.df.copy()
         dfND = dfND[dfND['Time'] >= tInject]
 
@@ -194,12 +179,20 @@ class Chromatogram:
 
         return dfND
 
-    def gradientInput(self, tInject, n):
+    def gradientInput(self, prominence, n):
+        # Takes the 'Gradient Pump' series and divides it into n intervals, and returns a vector of length n
         import math
-        dfND = self.nonDimensionalize(tInject = tInject)
 
-        m = n
+        dfND = self.nonDimensionalize(prominence = prominence)
 
-        slice = math.floor((len(dfND) / (m-1)))
+        slice = math.floor((len(dfND) / (n-1)))
         gradientVector = dfND['Gradient Pump'][::slice]
-        return len(gradientVector)
+
+        return np.array(gradientVector)
+    
+    def exportChromatogram(self):
+        # 
+    
+
+    
+    
