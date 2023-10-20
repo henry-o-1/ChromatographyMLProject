@@ -13,7 +13,7 @@ run2 = Chromatogram(filepath=filepath, skipRows=19)
 if __name__ == '__main__':
     peaks = run2.proteinPeakDescriptors(prominence=prominence, plot=False)
     #print(run2.dataFrameIdentity())
-    #run2.showChromatogram()
+    run2.showChromatogram(nondimensionalized=True, prominence=0.02)
     print(run2.gradientInput(prominence, n=50))
     plt.show()
 
