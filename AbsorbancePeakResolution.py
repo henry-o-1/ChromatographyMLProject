@@ -3,7 +3,7 @@ import numpy as np
 import logging
 import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
-from scipy import interpolate
+
 
 # To handle automating resolution finding
 # Note: Every time a file is run, a series of checks should be run so that the number of peaks is fixed (3)
@@ -32,9 +32,9 @@ class Chromatogram:
     def dataFrameIdentity(self):
         return self.df
 
-    def proteinPeakDescriptors(self, prominence=0.02, plot=False):
+# Target (Resolution)
+    def proteinPeakDescriptors(self, prominence, plot=False):
         # Every chromatograph should have three peaks
-        # If
         peakIndices = find_peaks(self.abs, prominence=prominence)[0]
 
         absArray = np.array(self.abs)
@@ -55,13 +55,14 @@ class Chromatogram:
         return (tPeaks, absPeaks, prominence)
 
 
-    def getResolution(self, peakNumberTuple):
+    def getResolution(self, prominence):
         # Pass in the time at maximum and the abs maximum to return resolution
         # Assume baseline of 0
+        peakDescriptorArray = self.proteinPeakDescriptors(prominence=prominence, plot=False)
 
         #Recollect from peakNumber Method
-        tPeaks = peakNumberTuple[0]
-        absPeaks = peakNumberTuple[1]
+        tPeaks = peakDescriptorArray[0]
+        absPeaks = peakDescriptorArray[1]
         halfMaxArray = absPeaks / 2
 
         #FWHM in Resolution Calculation
@@ -144,25 +145,11 @@ class Chromatogram:
         resolution23 = (tPeak3 - tPeak2) / (0.5 * (width2 + width3))
 
         return [resolution12, resolution23]
-
-
-    def showChromatogram(self):
-        fig, ax1 = plt.subplots()
-        ln1, = ax1.plot(self.time, self.abs,
-                        markersize=0.5, label='Protein absorbance')
-        ax1.set_xlabel('Time (min)')
-        ax1.set_ylabel('Absorbance (AU)')
-        ax1.set_ylim(0, 0.1)
-
-        ax2 = ax1.twinx()
-        ln2, = ax2.plot(self.time, self.df['Gradient Pump'], markersize=0.5,
-                        color='black', label='Buffer B gradient')
-        ax2.set_ylim(0, 60)
-        ax2.set_ylabel('Buffer B (%)')
-        ax2.legend(handles=[ln1, ln2])
-
-        fig.tight_layout()
-        plt.show()
+    
+# Input: (Gradient Vector)
+# Consider making input / output return tolerance parameter (prominence) to make sure input and output
+# Stay locked together when entering data
+# Method that calculate [input, output]
 
         # Now want to write a method to find inject spike (and maybe deadtime)
     def timeInject(self, prominence):
@@ -183,9 +170,10 @@ class Chromatogram:
 
         return injectPeakTime
 
-    def nonDimensionalize(self, tInject):
+    def nonDimensionalize(self, prominence):
         # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
         dfND = self.df.copy()
+        tInject = self.timeInject(prominence=prominence)
         dfND = dfND[dfND['Time'] >= tInject]
 
         dfNDTime = np.array(dfND['Time'])
@@ -193,13 +181,66 @@ class Chromatogram:
         dfND['Time'] = NDTime
 
         return dfND
+    
+    def showChromatogram(self, nondimensionalized=False, prominence=None):
+        # Displays absorbance and gradient pump data from a chromatogram
+        if nondimensionalized == False:
+            fig, ax1 = plt.subplots()
+            ln1, = ax1.plot(self.time, self.abs,
+                            markersize=0.5, label='Protein absorbance')
+            ax1.set_xlabel('Time (min)')
+            ax1.set_ylabel('Absorbance (AU)')
+            ax1.set_ylim(0, 0.1)
 
-    def gradientInput(self, tInject, n):
+            ax2 = ax1.twinx()
+            ln2, = ax2.plot(self.time, self.df['Gradient Pump'], markersize=0.5,
+                            color='black', label='Buffer B gradient')
+            ax2.set_ylim(0, 60)
+            ax2.set_ylabel('Buffer B (%)')
+            ax2.legend(handles=[ln1, ln2])
+
+            fig.tight_layout()
+            plt.show()
+        elif nondimensionalized == True:
+            # In the nondimensionalized case
+            dfND = self.nonDimensionalize(tInject=self.timeInject(prominence=prominence))
+            ndTime = dfND['Time']
+            ndAbs = dfND['QuadTec 1']
+            ndGrad = dfND['Gradient Pump']
+
+            fig, ax1 = plt.subplots()
+            ln1, = ax1.plot(ndTime, ndAbs, markersize=0.5, label='Protein absorbance')
+            ax1.set_xlabel('Time (dimensionless)')
+            ax1.set_ylabel('Absorbance (AU)')
+            ax1.set_ylim(0, 0.1)
+
+            ax2 = ax1.twinx()
+            ln2, = ax2.plot(ndTime, ndGrad, markersize=0.5,
+                            color='black', label='Buffer B gradient (dimensionless)')
+            ax2.set_ylim(0, 60)
+            ax2.set_ylabel('Buffer B (dimensionless)')
+            ax2.legend(handles=[ln1, ln2])
+
+            fig.tight_layout()
+            plt.show()
+
+    def gradientInput(self, prominence, n):
+        # Returns vector of length n in which n evenly spaced gradient measurements are stored
         import math
-        dfND = self.nonDimensionalize(tInject = tInject)
+        dfND = self.nonDimensionalize(prominence=prominence)
 
         m = n
 
         slice = math.floor((len(dfND) / (m-1)))
         gradientVector = dfND['Gradient Pump'][::slice]
-        return len(gradientVector)
+        return np.array(gradientVector)
+    
+    def inputTargetChromatogram(self, prominence, n):
+        # Pay attention in the main to debugging / running the code. Currently structured in:
+        # call functionA(keyword) --> functionB(keyword) --> functionC(keyword)
+        # as opposed to functionA(keywordfromFunctionB) --> functionB(keywordfromFunctionC)
+
+        input = self.gradientInput(prominence=prominence, n=n)
+        output = self.getResolution(prominence=prominence)
+
+        return [input, output]
