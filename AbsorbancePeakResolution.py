@@ -32,9 +32,9 @@ class Chromatogram:
     def dataFrameIdentity(self):
         return self.df
 
-    def proteinPeakDescriptors(self, prominence=0.02, plot=False):
+# Target (Resolution)
+    def proteinPeakDescriptors(self, prominence, plot=False):
         # Every chromatograph should have three peaks
-        # If
         peakIndices = find_peaks(self.abs, prominence=prominence)[0]
 
         absArray = np.array(self.abs)
@@ -55,13 +55,14 @@ class Chromatogram:
         return (tPeaks, absPeaks, prominence)
 
 
-    def getResolution(self, peakNumberTuple):
+    def getResolution(self, prominence):
         # Pass in the time at maximum and the abs maximum to return resolution
         # Assume baseline of 0
+        peakDescriptorArray = self.proteinPeakDescriptors(prominence=prominence, plot=False)
 
         #Recollect from peakNumber Method
-        tPeaks = peakNumberTuple[0]
-        absPeaks = peakNumberTuple[1]
+        tPeaks = peakDescriptorArray[0]
+        absPeaks = peakDescriptorArray[1]
         halfMaxArray = absPeaks / 2
 
         #FWHM in Resolution Calculation
@@ -144,6 +145,11 @@ class Chromatogram:
         resolution23 = (tPeak3 - tPeak2) / (0.5 * (width2 + width3))
 
         return [resolution12, resolution23]
+    
+# Input: (Gradient Vector)
+# Consider making input / output return tolerance parameter (prominence) to make sure input and output
+# Stay locked together when entering data
+# Method that calculate [input, output]
 
         # Now want to write a method to find inject spike (and maybe deadtime)
     def timeInject(self, prominence):
@@ -164,9 +170,10 @@ class Chromatogram:
 
         return injectPeakTime
 
-    def nonDimensionalize(self, tInject):
+    def nonDimensionalize(self, prominence):
         # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
         dfND = self.df.copy()
+        tInject = self.timeInject(prominence=prominence)
         dfND = dfND[dfND['Time'] >= tInject]
 
         dfNDTime = np.array(dfND['Time'])
@@ -217,14 +224,23 @@ class Chromatogram:
             fig.tight_layout()
             plt.show()
 
-    def gradientInput(self, tInject, n):
+    def gradientInput(self, prominence, n):
         # Returns vector of length n in which n evenly spaced gradient measurements are stored
         import math
-        dfND = self.nonDimensionalize(tInject = tInject)
+        dfND = self.nonDimensionalize(prominence=prominence)
 
         m = n
 
         slice = math.floor((len(dfND) / (m-1)))
         gradientVector = dfND['Gradient Pump'][::slice]
-        return len(gradientVector)
+        return np.array(gradientVector)
+    
+    def inputTargetChromatogram(self, prominence, n):
+        # Pay attention in the main to debugging / running the code. Currently structured in:
+        # call functionA(keyword) --> functionB(keyword) --> functionC(keyword)
+        # as opposed to functionA(keywordfromFunctionB) --> functionB(keywordfromFunctionC)
 
+        input = self.gradientInput(prominence=prominence, n=n)
+        output = self.getResolution(prominence=prominence)
+
+        return [input, output]
