@@ -1,4 +1,4 @@
-from AbsorbancePeakResolution import Chromatogram
+from Chromatogram import Chromatogram
 import logging
 
 logger = logging.getLogger()
@@ -8,16 +8,25 @@ class ChromatographyDirectory:
     def __init__(self, directoryPath):
         self.directoryPath = directoryPath
 
-    def getFiles(self):
-        # This method will return all of the .txt files in a year directory
+    def walkFiles(self):
         import os
-        fileList = []
-        for f in os.scandir(path=self.directoryPath):
-            if f.is_file():
-                fileList.append(f)
-                print(f.path)
-            else:
-                logger.info(f'Non-File {f}')
+        import fnmatch
+        numFiles = 0
+        for root, dirs, files in os.walk(self.directoryPath):
+            # Walk through each folder completely, searching through each folder
+            # Each dir file is the next root 
+            level = root.replace(self.directoryPath, '').count(os.sep)
+            indent = '  ' * (level)
+            print('{}{}/'.format(indent, os.path.basename(root)))
+            fileIndent = '  ' * (level + 1)
 
-        return fileList
+            for f in files:
+                # Check to make sure .txt files
+                if fnmatch.fnmatch(f, '*.txt'):
+                    f = root + f
+                    numFiles = numFiles + 1
+                    print('{}{}'.format(fileIndent, f))
+
+        return numFiles
+
     

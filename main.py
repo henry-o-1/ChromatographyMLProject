@@ -1,4 +1,4 @@
-from AbsorbancePeakResolution import Chromatogram
+from Chromatogram import Chromatogram
 from ChromatographyDirectory import ChromatographyDirectory
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,11 +12,13 @@ run2 = Chromatogram(filepath=filepath, skipRows=19)
 
 
 if __name__ == '__main__':
+    #run2.showChromatogram()
+    #plt.show()
     """
     peaks = run2.proteinPeakDescriptors(prominence=prominence, plot=False)
     var = run2.exportChromatogram(prominence=prominence, n=50)
     #print(run2.gradientInput(prominence=prominence, n=20))
     print(var)
     """
-    yearDirectory = ChromatographyDirectory(directoryPath=r'C:\Users\odonnh\VSCode\ChromatographyMLProject\Source\Group 10 Spring 19')
-    print(yearDirectory.getFiles())
+    yearDirectory = ChromatographyDirectory(directoryPath=r'C:\Users\odonnh\vscode\ChromatographyMLProject\Source\Group 10 Spring 19')
+    print(yearDirectory.walkFiles())
