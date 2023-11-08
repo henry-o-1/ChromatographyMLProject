@@ -19,18 +19,61 @@ class Chromatogram:
         skipRowsList = np.linspace(0,skipRows,skipRows+1)
         self.df = pd.read_csv(self.filepath, skiprows=skipRowsList,sep=',', on_bad_lines='skip')
 
-        logging.info(f'Header: {self.df.columns}')
+        #logging.info(f'Header: {self.df.columns}')
         # Set to index time, time is array, abs is left as series for potential need to index by time
         # It will also be convenient later to index time by itself, so a duplicate (non-index)
         # series 'Time' is created
-        #self.df = self.df.set_index('Time')
-        self.time = self.df['Time']
 
+        self.time = self.df['Time']
         #self.df['Time'] = self.time
         self.abs = self.df['QuadTec 1']
+        self.prominence = 0.02
+    
 
-    def dataFrameIdentity(self):
-        return self.df
+    # headerTest Method checks to make sure the header is identical, or matches the default
+    def headerTest(self):
+        currentHeader = list(self.df.columns.values)
+        correctHeader = ['Time', 'QuadTec 1', 'QuadTec 2', 'Gradient Pump', 'QuadTec 3',
+                         'QuadTec 4', 'Conductivity', 'GP Pressure', 'Volume']
+        
+        if currentHeader == correctHeader:
+            return True
+        else:
+            #logger.warning(f'Failed headerTest: {self.filepath}')
+            return False
+    
+    # peakNumberTest to make sure the number of peaks detected w default prominence is always equal to 3
+    def peakNumberTest(self):
+        # Every chromatograph should have three peaks with default prominence of 0.02
+        
+
+        # Loop through and change prominence if necessary
+        maxIter = 41
+        for i in range(maxIter):
+            peakIndices = find_peaks(self.abs, prominence=self.prominence)[0]
+
+            #absArray = np.array(self.abs)
+            timeArray = np.array(self.time)
+
+            tPeaks = timeArray[peakIndices]
+            peakNum = len(tPeaks)
+            if peakNum == 3:
+                #print(f'{peakNum}: Peak num found')
+                return True
+            else:
+                if peakNum < 3:
+                    # Need more peaks, decrease prominence
+
+                    self.prominence = self.prominence - 0.005
+                elif peakNum > 3:
+
+                    # Need fewer peaks, increase prominence
+                    self.prominence = self.prominence + 0.01
+                
+        logger.warning(f'peakNumberTest Timed Out (Exceeded {maxIter} Iterations): {len(tPeaks)} Peaks Found')
+        return False
+        
+
 
 # Target (Resolution)
     def proteinPeakDescriptors(self, prominence, plot=False):
@@ -190,7 +233,11 @@ class Chromatogram:
         m = n
 
         slice = math.floor((len(dfND) / (m-1)))
-        gradientVector = dfND['Gradient Pump'][::slice]
+        try:
+            gradientVector = dfND['Gradient Pump'][::slice]
+        except:
+            gradientVector = dfND['Conductivity'][::slice]
+
         return np.array(gradientVector)
     
     def inputTargetChromatogram(self, prominence, n):
@@ -216,7 +263,11 @@ class Chromatogram:
             ax1.set_ylim(0, 0.1)
 
             ax2 = ax1.twinx()
-            ln2, = ax2.plot(self.time, self.df['Gradient Pump'], markersize=0.5,
+            try:
+                ln2, = ax2.plot(self.time, self.df['Gradient Pump'], markersize=0.5,
+                            color='black', label='Buffer B gradient')
+            except:
+                ln2, = ax2.plot(self.time, self.df['Conductivity'], markersize=0.5,
                             color='black', label='Buffer B gradient')
             ax2.set_ylim(0, 60)
             ax2.set_ylabel('Buffer B (%)')
@@ -229,7 +280,10 @@ class Chromatogram:
             dfND = self.nonDimensionalize(tInject=self.timeInject(prominence=prominence))
             ndTime = dfND['Time']
             ndAbs = dfND['QuadTec 1']
-            ndGrad = dfND['Gradient Pump']
+            try:
+                ndGrad = dfND['Gradient Pump']
+            except:
+                ndGrad = dfND['Conductivity']
 
             fig, ax1 = plt.subplots()
             ln1, = ax1.plot(ndTime, ndAbs, markersize=0.5, label='Protein absorbance')

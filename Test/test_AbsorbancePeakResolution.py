@@ -1,4 +1,4 @@
-from AbsorbancePeakResolution import Chromatogram
+from Chromatogram import Chromatogram
 
 from main import filepath, skipRows, prominence
 import unittest
