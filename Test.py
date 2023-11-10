@@ -1,9 +1,5 @@
 from Chromatogram import Chromatogram
-
-class Test(Chromatogram):
-    def __init__(self, filepath, skipRows):
-        super().__init__(filepath, skipRows)
-
-    def headerTest()
+import numpy as np
+print(np.ones(5), np.shape(np.ones(5)))
 
         

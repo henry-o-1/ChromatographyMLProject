@@ -59,7 +59,7 @@ class Chromatogram:
             peakNum = len(tPeaks)
             if peakNum == 3:
                 #print(f'{peakNum}: Peak num found')
-                return True
+                return [True, self.prominence]
             else:
                 if peakNum < 3:
                     # Need more peaks, decrease prominence
@@ -70,8 +70,10 @@ class Chromatogram:
                     # Need fewer peaks, increase prominence
                     self.prominence = self.prominence + 0.01
                 
-        logger.warning(f'peakNumberTest Timed Out (Exceeded {maxIter} Iterations): {len(tPeaks)} Peaks Found')
-        return False
+        #logger.warning(f'peakNumberTest Timed Out (Exceeded {maxIter} Iterations): {len(tPeaks)} Peaks Found')
+        # Because the prominence value may be changed to cause the file to pass the test, it should also be
+        # returned for proper function when going back through the validFiles and finding the resolution / input
+        return [False, self.prominence]
         
 
 
@@ -87,7 +89,7 @@ class Chromatogram:
         absPeaks = absArray[peakIndices]
 
         #Show the number of peaks found using input prominence
-        logging.info(f'# of Peaks Found: {len(tPeaks)}')
+        #logging.info(f'# of Peaks Found: {len(tPeaks)}')
 
         if plot == True:
             plt.figure()
@@ -201,13 +203,21 @@ class Chromatogram:
         # Run this method only if the original number of found peaks is 3 (could write a test for this)
 
         peakNumber = len(self.proteinPeakDescriptors(prominence=prominence, plot=False)[0])
-
+        maxiter = 100
+        i=0
         while peakNumber != 4:
-            prominence = prominence - 0.001
-            proteinDescriptors = self.proteinPeakDescriptors(prominence=prominence, plot=False)[0]
-            peakNumber = len(proteinDescriptors)
+            if i > 100:
+                # If noisy data results in numeric error, have while loop to time out
+                logger.warning('Time Inject Timed Out, assumed t = 0')
+                injectPeakTime = 0
+                break
 
-        injectPeakTime = proteinDescriptors[0]
+            prominence = prominence - 0.001
+            peakTimes = self.proteinPeakDescriptors(prominence=prominence, plot=False)[0]
+            peakNumber = len(peakTimes)
+            i = i + 1
+
+        injectPeakTime = peakTimes[0]
 
         logger.info(f' Inject Peak Found: {injectPeakTime}')
 
@@ -216,7 +226,11 @@ class Chromatogram:
     def nonDimensionalize(self, prominence):
         # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
         dfND = self.df.copy()
+
+        print('Pretinject')
         tInject = self.timeInject(prominence=prominence)
+        print('Post')
+
         dfND = dfND[dfND['Time'] >= tInject]
 
         dfNDTime = np.array(dfND['Time'])
