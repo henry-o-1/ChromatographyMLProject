@@ -45,7 +45,6 @@ class Chromatogram:
     # peakNumberTest to make sure the number of peaks detected w default prominence is always equal to 3
     def peakNumberTest(self):
         # Every chromatograph should have three peaks with default prominence of 0.02
-        
 
         # Loop through and change prominence if necessary
         maxIter = 41
@@ -227,9 +226,7 @@ class Chromatogram:
         # Copy data frame, index after inject Spike, and non-dimensionzalize over the time
         dfND = self.df.copy()
 
-        print('Pretinject')
         tInject = self.timeInject(prominence=prominence)
-        print('Post')
 
         dfND = dfND[dfND['Time'] >= tInject]
 
@@ -244,9 +241,8 @@ class Chromatogram:
         import math
         dfND = self.nonDimensionalize(prominence=prominence)
 
-        m = n
+        slice = math.floor((len(dfND) / (n-1)))
 
-        slice = math.floor((len(dfND) / (m-1)))
         try:
             gradientVector = dfND['Gradient Pump'][::slice]
         except:

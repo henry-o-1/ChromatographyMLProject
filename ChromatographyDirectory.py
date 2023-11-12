@@ -1,6 +1,7 @@
 from Chromatogram import Chromatogram
 import logging
 import sys
+import numpy as np
 logger = logging.getLogger("ChromatographyDirectory")
 
 stdout = logging.StreamHandler(stream=sys.stdout)
@@ -17,7 +18,6 @@ logger.setLevel(logging.INFO)
 class ChromatographyDirectory:
     def __init__(self, directoryPath):
         self.directoryPath = directoryPath
-
 
     def displayFiles(self):
         import os
@@ -117,7 +117,7 @@ class ChromatographyDirectory:
 
         return f'{numFiles} Text Files\n{passedChromatograms} Files Pass Tests'
     
-    def getValidPaths(self):
+    def validPathParameters(self):
         # Return a list of all the valid file paths (full paths)
         import os
         import fnmatch
@@ -155,12 +155,48 @@ class ChromatographyDirectory:
                         
         return [validFilePaths, prominenceList]
     
-    def inputTargetPair(self, validFilePaths, prominenceList):
+    def inputTargetPair(self, validFilePaths, prominenceList, n):
+        inputGrad = np.ones(n)
+        targetResolution = np.array([1, 1])
+        print(inputGrad.shape, targetResolution.shape)
         
         for i, f in enumerate(validFilePaths):
-            print(i)
+            
             chromatogram = Chromatogram(filepath=f, skipRows=19)   
 
-            inputTargetPair = chromatogram.inputTargetChromatogram(prominence=prominenceList[i], n=20)
-            print(inputTargetPair)
+            # There is an edge case in which the three peaks cannot be properly detected due
+            # to a protein eluting at the end of the run and not being complete
+            # To make sure no peaks are double counted due to noise, if the differences between them
+            # does not exceed a threshold value, the run will be discarded
+            proteinPeaks = chromatogram.proteinPeakDescriptors(prominence=prominenceList[i])
+            proteinPeakTimes = np.array(proteinPeaks[0])
+
+            peakTimeDiffs = np.diff(proteinPeakTimes)
+            spacedPeaks = np.all(peakTimeDiffs > 20)
+            
+
+            if not spacedPeaks:
+                # Weird edge case where same peak is 2X counted at prominence given
+                logger.warning('Double counted peak: This Chromatogram will be discarded')
+                
+            else:
+                
+                inputTargetPair = chromatogram.inputTargetChromatogram(prominence=prominenceList[i], n=n)
+
+                inputGradCurrent = inputTargetPair[0]
+                targetResolutionCurrent = inputTargetPair[1]
+
+                if (len(inputGradCurrent) + 1) == n:
+                    # Werid bug in which sometimes, the gradient vector is n-1 instead of n
+                    print('Short by 1, modified input vector')
+                    modifiedInputGrad = np.ones(n)
+                    modifiedInputGrad[:(n-1)] = inputGradCurrent[:]
+                    modifiedInputGrad[-1] = modifiedInputGrad[-2]
+                    inputGradCurrent = modifiedInputGrad
+
+                inputGrad = np.vstack((inputGrad, inputGradCurrent))
+                targetResolution = np.vstack((targetResolution, targetResolutionCurrent))
+            
+        return inputGrad, targetResolution, len(inputGrad)
+        
         
