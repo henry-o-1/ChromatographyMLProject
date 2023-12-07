@@ -32,20 +32,25 @@ if __name__ == '__main__':
     '''
     
     subDir = ChromatographyDirectory(directoryPath=r'C:\Users\odonnh\vscode\ChromatographyMLProject\Source\chromatography_database')
+    print(subDir.countValidFiles())
+   
+    
     validGroup19Params = subDir.validPathParameters()
     
     pathList = validGroup19Params[0]
     prominenceList = validGroup19Params[1]
 
-    print(subDir.inputTargetPair(validFilePaths=pathList, prominenceList=prominenceList, n=20))
-    
-    validPathSample = ['C:\\Users\\odonnh\\vscode\\ChromatographyMLProject\\Source\\chromatography_database\\2010\\group-7 2010\\25%.TXT',
-                        'C:\\Users\\odonnh\\vscode\\ChromatographyMLProject\\Source\\chromatography_database\\2015\\group5\\grad1.TXT']
-    validProminencesSample = [0.004999999999999998, 0.004999999999999998]
+    inTarget = subDir.inputTargetPair(validFilePaths=pathList, prominenceList=prominenceList, n=20)
 
+    print(inTarget)
+    inputGrad = inTarget[0]
+    targetResolution = inTarget[1]
+
+    print(subDir.cleanData(inputGradient=inputGrad, targetResolution=targetResolution, n=20))
     
-    chromatogram = Chromatogram(filepath=r'C:\\Users\\odonnh\\vscode\\ChromatographyMLProject\\Source\\Group 10 Spring 19\\F3834_D-multigradient1.TXT',
-                                skipRows=19)
+    subDir.dataToFile(inputGradient = inputGrad, targetResolution=targetResolution)
+    #chromatogram = Chromatogram(filepath=r'C:\\Users\\odonnh\\vscode\\ChromatographyMLProject\\Source\\Group 10 Spring 19\\F3834_D-multigradient1.TXT',
+                                #skipRows=19)
     #print(chromatogram.inputTargetChromatogram(prominence=0.015, n=20))
     
    
@@ -55,4 +60,5 @@ if __name__ == '__main__':
 
     #yearDirectory = ChromatographyDirectory(directoryPath=r'C:\Users\odonnh\vscode\ChromatographyMLProject\Source\chromatography_database')
     #print(yearDirectory.testFileHeader())
+    
    

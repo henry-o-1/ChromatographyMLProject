@@ -2,6 +2,7 @@ from Chromatogram import Chromatogram
 import logging
 import sys
 import numpy as np
+import pandas as pd
 logger = logging.getLogger("ChromatographyDirectory")
 
 stdout = logging.StreamHandler(stream=sys.stdout)
@@ -158,8 +159,8 @@ class ChromatographyDirectory:
     def inputTargetPair(self, validFilePaths, prominenceList, n):
         inputGrad = np.ones(n)
         targetResolution = np.array([1, 1])
-        print(inputGrad.shape, targetResolution.shape)
         
+        modCounter = 0
         for i, f in enumerate(validFilePaths):
             
             chromatogram = Chromatogram(filepath=f, skipRows=19)   
@@ -186,17 +187,57 @@ class ChromatographyDirectory:
                 inputGradCurrent = inputTargetPair[0]
                 targetResolutionCurrent = inputTargetPair[1]
 
+                # Count up the number of modified arrays
+                
                 if (len(inputGradCurrent) + 1) == n:
                     # Werid bug in which sometimes, the gradient vector is n-1 instead of n
                     print('Short by 1, modified input vector')
                     modifiedInputGrad = np.ones(n)
                     modifiedInputGrad[:(n-1)] = inputGradCurrent[:]
+                    print(f'Modified Input {modifiedInputGrad}')
+                    print(f'Input gradient {inputGradCurrent}')
+                    print(f'Last element {modifiedInputGrad[-1]}')
+
                     modifiedInputGrad[-1] = modifiedInputGrad[-2]
+
+                    print(f'Last element after addition: {modifiedInputGrad[-1]}')
+
+
                     inputGradCurrent = modifiedInputGrad
+                    print(f'Set to current inputgrad {inputGradCurrent}')
+
+
+                    modCounter = modCounter + 1
 
                 inputGrad = np.vstack((inputGrad, inputGradCurrent))
                 targetResolution = np.vstack((targetResolution, targetResolutionCurrent))
             
-        return inputGrad, targetResolution, len(inputGrad)
+        return inputGrad, targetResolution, len(inputGrad), modCounter
+    
+    def dataToFile(self, inputGradient, targetResolution):
+        resolutionData = targetResolution.T
+
+        r12 = resolutionData[0]
+        r23 = resolutionData[1]
+
+        df = pd.DataFrame(inputGradient)
+
+        df['r12'] = r12
+        df['r23'] = r23
+
+        df.to_csv('SavedChromatographicData')
+
+        return df
+
+    def cleanData(self, inputGradient, targetResolution, n):
+        
+        nanList = np.ones(n)
+        for i, grad in enumerate(inputGradient):
+            if np.isnan(np.sum(grad)):
+                print('Contains Nan')
+                print(f'sum: {np.sum(grad)}')
+                nanList = np.vstack((nanList, grad))
+        return nanList, np.shape(nanList)
+
         
         
